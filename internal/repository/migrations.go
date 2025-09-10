@@ -2,8 +2,6 @@ package repository
 
 import "context"
 
-// SQL для создания таблицы пользователей.
-// UNIQUE по login – чтобы логины не повторялись.
 const createUsersSQL = `
 CREATE TABLE IF NOT EXISTS users (
   id BIGSERIAL PRIMARY KEY,
@@ -13,8 +11,26 @@ CREATE TABLE IF NOT EXISTS users (
 );
 `
 
-// Запускаем все миграции при старте приложения.
+// используем TEXT + CHECK вместо ENUM, чтобы не ловить сложности с ALTER TYPE
+const createOrdersSQL = `
+CREATE TABLE IF NOT EXISTS orders (
+  id BIGSERIAL PRIMARY KEY,
+  user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  number  TEXT NOT NULL UNIQUE,
+  status  TEXT NOT NULL DEFAULT 'NEW' CHECK (status IN ('NEW','PROCESSING','INVALID','PROCESSED')),
+  accrual NUMERIC(18,2),
+  uploaded_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  processed_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_orders_user_uploaded_at ON orders(user_id, uploaded_at DESC);
+`
+
 func (p *Postgres) RunMigrations(ctx context.Context) error {
-	_, err := p.Pool.Exec(ctx, createUsersSQL)
-	return err
+	if _, err := p.Pool.Exec(ctx, createUsersSQL); err != nil {
+		return err
+	}
+	if _, err := p.Pool.Exec(ctx, createOrdersSQL); err != nil {
+		return err
+	}
+	return nil
 }

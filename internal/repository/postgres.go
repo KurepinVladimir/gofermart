@@ -2,8 +2,10 @@ package repository
 
 import (
 	"context"
+	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -61,4 +63,23 @@ func (p *Postgres) GetUserByLogin(ctx context.Context, login string) (int64, str
 		return 0, "", err // в т.ч. pgx.ErrNoRows
 	}
 	return id, hash, nil
+}
+
+// Узнать владельца заказа, если он уже есть
+func (p *Postgres) GetOrderOwner(ctx context.Context, number string) (int64, bool, error) {
+	var uid int64
+	err := p.Pool.QueryRow(ctx, `SELECT user_id FROM orders WHERE number=$1`, number).Scan(&uid)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, false, nil
+	}
+	if err != nil {
+		return 0, false, err
+	}
+	return uid, true, nil
+}
+
+// Вставить новый заказ
+func (p *Postgres) InsertOrder(ctx context.Context, userID int64, number string) error {
+	_, err := p.Pool.Exec(ctx, `INSERT INTO orders (user_id, number) VALUES ($1,$2)`, userID, number)
+	return err
 }

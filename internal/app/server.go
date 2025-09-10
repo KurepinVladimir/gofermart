@@ -9,6 +9,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/KurepinVladimir/gofermart/internal/auth"
+	"github.com/KurepinVladimir/gofermart/internal/orders"
 	"github.com/KurepinVladimir/gofermart/internal/repository"
 )
 
@@ -38,6 +39,16 @@ func NewServer(addr string, pg *repository.Postgres) *Server {
 	authHandlers := auth.NewHandlers(authSvc)
 	r.Post("/api/user/register", authHandlers.Register)
 	r.Post("/api/user/login", authHandlers.Login)
+
+	// === Protected ===
+	ordersSvc := orders.NewService(pg)
+	ordersHandlers := orders.NewHandlers(ordersSvc)
+
+	r.Group(func(pr chi.Router) {
+		pr.Use(auth.Middleware)
+		pr.Post("/api/user/orders", ordersHandlers.PostOrder)
+		// позже добавим GET /api/user/orders, баланс и т.д.
+	})
 
 	// ===== Health =====
 	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
