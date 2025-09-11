@@ -1,9 +1,11 @@
 package orders
 
 import (
+	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/KurepinVladimir/gofermart/internal/auth"
 )
@@ -60,4 +62,48 @@ func (h *Handlers) PostOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusAccepted) // 202: новый принят
+}
+
+// Ответная структура
+type orderResponse struct {
+	Number     string   `json:"number"`
+	Status     string   `json:"status"`
+	Accrual    *float64 `json:"accrual,omitempty"`
+	UploadedAt string   `json:"uploaded_at"`
+}
+
+func (h *Handlers) GetOrders(w http.ResponseWriter, r *http.Request) {
+	userID, ok := auth.ContextUserID(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	rows, err := h.svc.ListByUser(r.Context(), userID)
+	if err != nil {
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+	if len(rows) == 0 {
+		w.WriteHeader(http.StatusNoContent) // 204
+		return
+	}
+
+	resp := make([]orderResponse, 0, len(rows))
+	for _, rr := range rows {
+		var accrualPtr *float64
+		if rr.Accrual.Valid {
+			v := rr.Accrual.Float64
+			accrualPtr = &v
+		}
+		resp = append(resp, orderResponse{
+			Number:     rr.Number,
+			Status:     rr.Status,
+			Accrual:    accrualPtr,
+			UploadedAt: rr.UploadedAt.Format(time.RFC3339),
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(resp)
 }

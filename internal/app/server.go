@@ -9,8 +9,10 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/KurepinVladimir/gofermart/internal/auth"
+	"github.com/KurepinVladimir/gofermart/internal/balance"
 	"github.com/KurepinVladimir/gofermart/internal/orders"
 	"github.com/KurepinVladimir/gofermart/internal/repository"
+	"github.com/KurepinVladimir/gofermart/internal/withdrawals"
 )
 
 type Server struct {
@@ -44,10 +46,25 @@ func NewServer(addr string, pg *repository.Postgres) *Server {
 	ordersSvc := orders.NewService(pg)
 	ordersHandlers := orders.NewHandlers(ordersSvc)
 
+	// ===
+	balSvc := balance.NewService(pg)
+	balHandlers := balance.NewHandlers(balSvc)
+
+	// ===
+	wdSvc := withdrawals.NewService(pg)
+	wdHandlers := withdrawals.NewHandlers(wdSvc)
+
 	r.Group(func(pr chi.Router) {
 		pr.Use(auth.Middleware)
+
 		pr.Post("/api/user/orders", ordersHandlers.PostOrder)
-		// позже добавим GET /api/user/orders, баланс и т.д.
+		pr.Get("/api/user/orders", ordersHandlers.GetOrders)
+
+		pr.Get("/api/user/balance", balHandlers.GetBalance)
+
+		// НОВОЕ:
+		pr.Post("/api/user/balance/withdraw", wdHandlers.PostWithdraw)
+		pr.Get("/api/user/withdrawals", wdHandlers.GetWithdrawals)
 	})
 
 	// ===== Health =====
