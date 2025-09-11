@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS orders (
   processed_at TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS idx_orders_user_uploaded_at ON orders(user_id, uploaded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
 `
-
 const createBalancesSQL = `
 CREATE TABLE IF NOT EXISTS balances (
   user_id   BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
@@ -55,7 +55,6 @@ func (p *Postgres) RunMigrations(ctx context.Context) error {
 	if _, err := p.Pool.Exec(ctx, createBalancesSQL); err != nil {
 		return err
 	}
-	// НОВОЕ:
 	if _, err := p.Pool.Exec(ctx, createWithdrawalsSQL); err != nil {
 		return err
 	}

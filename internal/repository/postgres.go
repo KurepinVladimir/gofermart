@@ -240,3 +240,90 @@ func (p *Postgres) ListWithdrawalsByUser(ctx context.Context, userID int64) ([]W
 	}
 	return out, rows.Err()
 }
+
+// Вытащить пачку заказов в статусах NEW/PROCESSING (для опроса внешней системы)
+func (p *Postgres) PickPendingOrders(ctx context.Context, limit int) ([]string, error) {
+	rows, err := p.Pool.Query(ctx, `
+		SELECT number
+		FROM orders
+		WHERE status IN ('NEW','PROCESSING')
+		ORDER BY uploaded_at ASC
+		LIMIT $1
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var nums []string
+	for rows.Next() {
+		var n string
+		if err := rows.Scan(&n); err != nil {
+			return nil, err
+		}
+		nums = append(nums, n)
+	}
+	return nums, rows.Err()
+}
+
+// Поставить статус PROCESSING (когда внешняя система ещё считает)
+func (p *Postgres) MarkProcessing(ctx context.Context, number string) error {
+	_, err := p.Pool.Exec(ctx, `UPDATE orders SET status='PROCESSING' WHERE number=$1 AND status IN ('NEW','PROCESSING')`, number)
+	return err
+}
+
+// Пометить заказ INVALID (окончательный статус)
+func (p *Postgres) MarkInvalid(ctx context.Context, number string) error {
+	_, err := p.Pool.Exec(ctx, `UPDATE orders SET status='INVALID', processed_at=now() WHERE number=$1`, number)
+	return err
+}
+
+// Применить начисление и закрыть заказ (атомарно)
+func (p *Postgres) ApplyAccrualByNumber(ctx context.Context, number string, accrual float64) error {
+	tx, err := p.Pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Блокируем заказ
+	var userID int64
+	var status string
+	err = tx.QueryRow(ctx, `SELECT user_id, status FROM orders WHERE number=$1 FOR UPDATE`, number).Scan(&userID, &status)
+	if err != nil {
+		return err
+	}
+	// Идемпотентность: если уже закрыт — просто выходим
+	if status == "PROCESSED" || status == "INVALID" {
+		return tx.Commit(ctx)
+	}
+
+	// Баланс: убеждаемся, что строка есть
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO balances (user_id) VALUES ($1)
+		ON CONFLICT (user_id) DO NOTHING
+	`, userID); err != nil {
+		return err
+	}
+
+	// Начисляем, если есть что начислять (>0)
+	if accrual > 0 {
+		if _, err := tx.Exec(ctx, `
+			UPDATE balances
+			SET current = current + $1
+			WHERE user_id = $2
+		`, accrual, userID); err != nil {
+			return err
+		}
+	}
+
+	// Обновляем заказ
+	if _, err := tx.Exec(ctx, `
+		UPDATE orders
+		SET status='PROCESSED', accrual=$1, processed_at=now()
+		WHERE number=$2
+	`, accrual, number); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}

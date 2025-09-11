@@ -8,9 +8,11 @@ import (
 
 	"go.uber.org/zap"
 
+	"github.com/KurepinVladimir/gofermart/internal/accrual"
 	"github.com/KurepinVladimir/gofermart/internal/app"
 	"github.com/KurepinVladimir/gofermart/internal/config"
 	"github.com/KurepinVladimir/gofermart/internal/logger"
+	"github.com/KurepinVladimir/gofermart/internal/orders"
 	"github.com/KurepinVladimir/gofermart/internal/repository"
 )
 
@@ -39,8 +41,10 @@ func main() {
 		logger.Log.Fatal("migrations failed", zap.Error(err))
 	}
 
+	// http server
 	srv := app.NewServer(cfg.RunAddr, pg)
 
+	// ЗАПУСК HTTP
 	go func() {
 		logger.Log.Info("server started", zap.String("addr", cfg.RunAddr))
 		if err := srv.Start(); err != nil {
@@ -48,6 +52,15 @@ func main() {
 			stop()
 		}
 	}()
+
+	// === НОВОЕ: воркер начислений ===
+	if cfg.Accrual != "" {
+		cli := accrual.New(cfg.Accrual)
+		w := orders.NewWorker(pg, cli, 50, 2*time.Second) // batch=50, тик=2с
+		go w.Run(ctx)
+	} else {
+		logger.Log.Warn("ACCRUAL_SYSTEM_ADDRESS not set — accrual worker disabled")
+	}
 
 	<-ctx.Done()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
