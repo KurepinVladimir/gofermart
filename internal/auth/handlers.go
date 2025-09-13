@@ -43,6 +43,16 @@ func (h *Handlers) Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
+	// установить cookie и продублировать в заголовке (на всякий)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "Authorization",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	w.Header().Set("Authorization", "Bearer "+token)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK) // по ТЗ: 200
 	_ = json.NewEncoder(w).Encode(map[string]string{"token": token})
@@ -70,6 +80,16 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
+	// установить cookie и продублировать в заголовке (на всякий)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "Authorization",
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	w.Header().Set("Authorization", "Bearer "+token)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	_ = json.NewEncoder(w).Encode(map[string]string{"token": token})

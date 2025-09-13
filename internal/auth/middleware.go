@@ -6,7 +6,6 @@ import (
 	"strings"
 )
 
-// ключ для userID в контексте
 type ctxKey string
 
 const userIDKey ctxKey = "userID"
@@ -14,7 +13,6 @@ const userIDKey ctxKey = "userID"
 func WithUserID(ctx context.Context, id int64) context.Context {
 	return context.WithValue(ctx, userIDKey, id)
 }
-
 func ContextUserID(ctx context.Context) (int64, bool) {
 	v := ctx.Value(userIDKey)
 	id, ok := v.(int64)
@@ -23,24 +21,30 @@ func ContextUserID(ctx context.Context) (int64, bool) {
 
 func Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h := r.Header.Get("Authorization")
-		if !strings.HasPrefix(h, "Bearer ") {
+		raw := r.Header.Get("Authorization")
+		if !strings.HasPrefix(raw, "Bearer ") {
+			// пробуем cookie "Authorization" или "token"
+			if c, err := r.Cookie("Authorization"); err == nil && c.Value != "" {
+				raw = "Bearer " + c.Value
+			} else if c2, err2 := r.Cookie("token"); err2 == nil && c2.Value != "" {
+				raw = "Bearer " + c2.Value
+			}
+		}
+		if !strings.HasPrefix(raw, "Bearer ") {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		token := strings.TrimPrefix(h, "Bearer ")
-		claims, err := ParseToken(token) // из internal/auth/jwt.go
+		token := strings.TrimPrefix(raw, "Bearer ")
+		claims, err := ParseToken(token)
 		if err != nil {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		// из MakeToken мы кладём sub как число (float64 в mapclaims)
 		sub, ok := claims["sub"].(float64)
 		if !ok {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
-		ctx := WithUserID(r.Context(), int64(sub))
-		next.ServeHTTP(w, r.WithContext(ctx))
+		next.ServeHTTP(w, r.WithContext(WithUserID(r.Context(), int64(sub))))
 	})
 }
