@@ -1,0 +1,35 @@
+name: lint-and-test
+
+on:
+  pull_request:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  golangci:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+      - name: Install golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.60.1
+      - name: Run golangci-lint
+        run: golangci-lint run ./...
+
+  test:
+    name: go test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+      - name: Tidy
+        run: go mod tidy
+      - name: Unit tests
+        run: go test ./... -race -count=1

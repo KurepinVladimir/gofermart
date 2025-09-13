@@ -13,19 +13,26 @@ type Config struct {
 
 func Load() Config {
 	var cfg Config
-	flag.StringVar(&cfg.RunAddr, "a", ":8080", "server listen address")
-	flag.StringVar(&cfg.Database, "d", "", "postgres DSN")
-	flag.StringVar(&cfg.Accrual, "r", "", "accrual system base URL")
+
+	// 1) дефолты из ENV (если есть)
+	runDefault := getenv("RUN_ADDRESS", ":8080")
+	dbDefault := getenv("DATABASE_URI", "")
+	accDefault := getenv("ACCRUAL_SYSTEM_ADDRESS", "")
+
+	// 2) объявляем флаги с этими дефолтами
+	flag.StringVar(&cfg.RunAddr, "a", runDefault, "server listen address")
+	flag.StringVar(&cfg.Database, "d", dbDefault, "postgres DSN")
+	flag.StringVar(&cfg.Accrual, "r", accDefault, "accrual system base URL")
 	flag.Parse()
 
-	if v := os.Getenv("RUN_ADDRESS"); v != "" {
-		cfg.RunAddr = v
-	}
-	if v := os.Getenv("DATABASE_URI"); v != "" {
-		cfg.Database = v
-	}
-	if v := os.Getenv("ACCRUAL_SYSTEM_ADDRESS"); v != "" {
-		cfg.Accrual = v
-	}
+	// 3) готово: если флаги не заданы — останутся значения из ENV/дефолта,
+	// если заданы — флаги переопределяют ENV.
 	return cfg
+}
+
+func getenv(k, def string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
+	}
+	return def
 }
