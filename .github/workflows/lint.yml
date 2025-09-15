@@ -10,14 +10,25 @@ jobs:
     name: golangci-lint
     runs-on: ubuntu-latest
     steps:
+      # 1) Клонируем код
       - uses: actions/checkout@v4
+
+      # 2) Ставим нужную версию Go
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22.x'
+
+      # 3) СКАЧАТЬ МОДУЛИ (ВАЖНО!)
+      - name: Go mod download
+        run: go mod download
+
+      # 4) Ставим бинарник golangci-lint
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.60.1
+
+      # 5) Запускаем линтер
       - name: Run golangci-lint
         run: golangci-lint run ./...
 
@@ -29,7 +40,11 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22.x'
+
+      # Тестовый job может сам сделать tidy,
+      # он заодно проверит, что go.mod/go.sum в порядке.
       - name: Tidy
         run: go mod tidy
+
       - name: Unit tests
         run: go test ./... -race -count=1
