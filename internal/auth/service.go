@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
@@ -43,7 +42,7 @@ func (s *Service) Register(ctx context.Context, login, password string) (int64, 
 	id, err := s.repo.CreateUser(ctx, login, h)
 	if err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // unique_violation
 			return 0, ErrLoginTaken
 		}
 		return 0, err

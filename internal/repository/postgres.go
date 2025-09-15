@@ -6,7 +6,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/jackc/pgerrcode"
+	//"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -201,7 +201,7 @@ func (p *Postgres) Withdraw(ctx context.Context, userID int64, orderNumber strin
 		userID, orderNumber, amount,
 	); err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UniqueViolation {
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			// этот номер уже использовался для списания (идемпотентность/защита)
 			// По ТЗ нет отдельного кода, отдадим 422 — "неверный номер заказа" по смыслу.
 			return errors.New("withdraw_order_duplicate")
