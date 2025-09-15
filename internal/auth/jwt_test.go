@@ -6,7 +6,7 @@ import (
 )
 
 func TestJWT_MakeAndParse(t *testing.T) {
-	t.Parallel()
+
 	t.Setenv("JWT_SECRET", "testsecret") // фиксированный ключ
 
 	tok, err := MakeToken(7, "alice", 2*time.Second)
@@ -26,7 +26,7 @@ func TestJWT_MakeAndParse(t *testing.T) {
 }
 
 func TestJWT_Expired(t *testing.T) {
-	t.Parallel()
+
 	t.Setenv("JWT_SECRET", "testsecret")
 
 	tok, err := MakeToken(1, "u", -1*time.Second) // уже просрочен

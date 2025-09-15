@@ -18,7 +18,7 @@ func init() {
 type jsonMap = map[string]any
 
 func TestHandlers_Register_And_Login(t *testing.T) {
-	t.Parallel()
+
 	t.Setenv("JWT_SECRET", "hsecret")
 
 	repo := newMemRepo()
@@ -74,7 +74,7 @@ func TestHandlers_Register_And_Login(t *testing.T) {
 }
 
 func TestHandlers_Register_Duplicate(t *testing.T) {
-	t.Parallel()
+
 	t.Setenv("JWT_SECRET", "hsecret2")
 
 	repo := newMemRepo()

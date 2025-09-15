@@ -8,7 +8,7 @@ import (
 )
 
 func TestMiddleware_CookieAuth(t *testing.T) {
-	t.Parallel()
+
 	t.Setenv("JWT_SECRET", "cookiekey")
 
 	tok, err := MakeToken(42, "user", time.Hour)
