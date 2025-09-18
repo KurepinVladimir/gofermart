@@ -9,42 +9,51 @@ jobs:
   golangci:
     name: golangci-lint
     runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: auto
     steps:
-      # 1) Клонируем код
       - uses: actions/checkout@v4
 
-      # 2) Ставим нужную версию Go
+      # Используем ту же версию Go, что прописана в go.mod
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22.x'
+          go-version-file: go.mod
 
-      # 3) СКАЧАТЬ МОДУЛИ (ВАЖНО!)
+      # КРИТИЧНО: подтягиваем модули до запуска линтера,
+      # иначе typecheck видит импорты как "undefined"
       - name: Go mod download
         run: go mod download
 
-      # 4) Ставим бинарник golangci-lint
+      # Можно вывести ключевые импорты для отладки (по желанию)
+      - name: Debug: show key imports
+        run: |
+          sed -n '1,60p' internal/app/server.go || true
+          sed -n '1,60p' internal/auth/jwt.go || true
+          sed -n '1,60p' internal/auth/service.go || true
+          sed -n '1,60p' internal/repository/postgres.go || true
+
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.60.1
+          # отключаем кэш, чтобы не тянулся старый стейт
+          skip-cache: true
+          args: --timeout=5m
 
-      # 5) Запускаем линтер
       - name: Run golangci-lint
         run: golangci-lint run ./...
 
   test:
     name: go test
     runs-on: ubuntu-latest
+    env:
+      GOTOOLCHAIN: auto
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.22.x'
-
-      # Тестовый job может сам сделать tidy,
-      # он заодно проверит, что go.mod/go.sum в порядке.
-      - name: Tidy
-        run: go mod tidy
-
+          go-version-file: go.mod
+      - name: Go mod download
+        run: go mod download
       - name: Unit tests
         run: go test ./... -race -count=1
