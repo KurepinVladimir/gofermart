@@ -24,13 +24,13 @@ jobs:
       - name: Go mod download
         run: go mod download
 
-      # # Можно вывести ключевые импорты для отладки (по желанию)
-      # - name: Debug: show key imports
-      #   run: |
-      #     sed -n '1,60p' internal/app/server.go || true
-      #     sed -n '1,60p' internal/auth/jwt.go || true
-      #     sed -n '1,60p' internal/auth/service.go || true
-      #     sed -n '1,60p' internal/repository/postgres.go || true
+       # Можно вывести ключевые импорты для отладки (по желанию)
+       - name: Debug: show key imports
+         run: |
+           sed -n '1,60p' internal/app/server.go || true
+           sed -n '1,60p' internal/auth/jwt.go || true
+           sed -n '1,60p' internal/auth/service.go || true
+           sed -n '1,60p' internal/repository/postgres.go || true
 
       - name: Install golangci-lint
         uses: golangci/golangci-lint-action@v6
