@@ -43,7 +43,7 @@ func (h *Handlers) Register(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
-	// установить cookie и продублировать в заголовке (на всякий)
+	// установить cookie и продублировать в заголовке
 	http.SetCookie(w, &http.Cookie{
 		Name:     "Authorization",
 		Value:    token,
@@ -80,7 +80,7 @@ func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
-	// установить cookie и продублировать в заголовке (на всякий)
+	// установить cookie и продублировать в заголовке
 	http.SetCookie(w, &http.Cookie{
 		Name:     "Authorization",
 		Value:    token,
