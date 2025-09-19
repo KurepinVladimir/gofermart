@@ -57,7 +57,7 @@ func (f *fakeOrdersRepo) ListOrdersByUser(_ context.Context, userID int64) ([]re
 			out = append(out, f.rows[num])
 		}
 	}
-	// порядок не критичен в этом юните
+	// порядок не критичен
 	return out, nil
 }
 
@@ -68,7 +68,7 @@ func TestPostOrder_HandlerCodes(t *testing.T) {
 	svc := NewService(repo)
 	h := NewHandlers(svc)
 
-	// вспомогатель: вызывает POST /api/user/orders от имени userID
+	// вызывает POST /api/user/orders от имени userID
 	call := func(userID int64, body string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(http.MethodPost, "/api/user/orders", bytes.NewBufferString(body))
 		req.Header.Set("Content-Type", "text/plain")
