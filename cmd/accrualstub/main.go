@@ -17,7 +17,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/orders/", func(w http.ResponseWriter, r *http.Request) {
 		order := r.URL.Path[len("/api/orders/"):]
-		// простая логика:
+		// логика:
 		// если число чётное — PROCESSED с начислением; если оканчивается на 9 — INVALID;
 		// иначе PROCESSING.
 		if len(order) == 0 {
